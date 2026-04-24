@@ -1,0 +1,36 @@
+{
+  "dji_sdk_app_info": {
+    "user_app_name": "SENSORSDK",
+    "user_app_id": "180739",
+    "user_app_key": "2fc73e256257088cc5e919c7fc4b6b1",
+    "user_app_license": "gEPtYq/kBo3ZtCgyB335+NWMpOVWHzquo+30BYyUT3ituFQ16Osd+hFWSU6ySboXsc5wrHq+IL1nl1CQQ4DRVWUfH58X81e0b82arTCeT9lyj7YZDOhtrQsWUTGuqw7e4apqKBAuzVWOeGjCPz0aoVDjrowsdQvSAeQo5YW3EkmUsUek+gCne7kSlPzl8h4tLUg9th3j2+HhJyrSlBfEBPW/C389c3INoXV0PfOZG/e0zNNMeicwp+ZverNdcata0Z0p9Ohls38Yb+72ng7RYnagZz2fPQKls4UuOkVKSRka1xJKOzJDz5xcF7T8iT/hQ2JlzCuCAgOYahdWZLEPKw==",
+    "user_develop_account": "proyectosidipsp@gmail.com",
+    "user_baud_rate": "460800"
+  },
+  "dji_sdk_link_config": {
+    "link_available": "use_only_uart/use_uart_and_usb_bulk_device/use_uart_and_network_device",
+    "link_select": "use_uart_and_network_device",
+    "uart_config": {
+      "uart1_device_name": "/dev/ttyUSB0",
+      "uart2_device_enable": "true",
+      "uart2_device_name": "/dev/ttyACM0"
+    },
+    "network_config": {
+      "network_device_name": "enxf8e43b7bbc2c",
+      "network_usb_adapter_vid": "0x0B95",
+      "network_usb_adapter_pid": "0x1790"
+    },
+    "usb_bulk_config": {
+      "usb_device_vid": "0x0B95",
+      "usb_device_pid": "0x1790",
+      "usb_bulk1_device_name": "/dev/usb-ffs/bulk1",
+      "usb_bulk1_interface_num": "2",
+      "usb_bulk1_endpoint_in": "0x83",
+      "usb_bulk1_endpoint_out": "0x02",
+      "usb_bulk2_device_name": "/dev/usb-ffs/bulk2",
+      "usb_bulk2_interface_num": "3",
+      "usb_bulk2_endpoint_in": "0x84",
+      "usb_bulk2_endpoint_out": "0x03"
+    }
+  }
+}
