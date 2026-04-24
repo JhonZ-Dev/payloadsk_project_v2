@@ -24,6 +24,9 @@
 #include <stdio.h>
 #include <string.h>
 
+/* Variable global para el Heartbeat */
+int32_t g_heartbeat_counter = 0;
+
 /* Private constants ---------------------------------------------------------*/
 #define SENSOR_SIM_TASK_FREQ_MS        (5000)
 #define SENSOR_SIM_TASK_STACK_SIZE     (2048)
@@ -281,15 +284,9 @@ static void *SensorSim_Task(void *arg)
             }
 
             /* --- HACK DEL LATIDO (HEARTBEAT) --- */
-            /* Force an update on Widget Index 6 (Int Input Box) to trigger Pilot 2 to publish the state to MQTT */
-            static int32_t heartbeat_counter = 0;
-            heartbeat_counter++;
-            if (heartbeat_counter > 9999) heartbeat_counter = 0;
-            
-            T_DjiReturnCode widgetStat = DjiWidget_SetWidgetValue(6, heartbeat_counter);
-            if (widgetStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                USER_LOG_WARN("sensor sim: heartbeat widget failed: 0x%08X", widgetStat);
-            }
+            /* Increment global counter so Pilot 2 sees a change when it polls GetWidgetValue */
+            g_heartbeat_counter++;
+            if (g_heartbeat_counter > 9999) g_heartbeat_counter = 0;
         }
 
         /* Also send to extension/payload ports depending on mount */
