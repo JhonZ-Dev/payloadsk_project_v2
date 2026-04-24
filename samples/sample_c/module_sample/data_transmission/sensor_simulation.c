@@ -9,6 +9,7 @@
 
 #include "sensor_simulation.h"
 #include "rdo_modbus.h"
+#include "dji_core.h"
 #include "dji_logger.h"
 #include "dji_platform.h"
 #include "utils/util_misc.h"
