@@ -275,13 +275,9 @@ int main(int argc, char **argv)
         #endif
 
         #if CONFIG_MODULE_SAMPLE_GIMBAL_EMU_ON
-            if (aircraftInfoBaseInfo.djiAdapterType == DJI_SDK_ADAPTER_TYPE_SKYPORT_V2 ||
-                aircraftInfoBaseInfo.djiAdapterType == DJI_SDK_ADAPTER_TYPE_EPORT_V2_RIBBON_CABLE ||
-                aircraftInfoBaseInfo.djiAdapterType == DJI_SDK_ADAPTER_TYPE_SKYPORT_V3 ||
-                aircraftInfoBaseInfo.djiAdapterType == DJI_SDK_ADAPTER_TYPE_NONE) {
-                if (DjiTest_GimbalStartService() != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                    USER_LOG_ERROR("psdk gimbal init error");
-                }
+            USER_LOG_INFO("Forzando inicializacion de Gimbal PSDK ignorando el tipo de adaptador.");
+            if (DjiTest_GimbalStartService() != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_ERROR("psdk gimbal init error");
             }
         #endif
 
