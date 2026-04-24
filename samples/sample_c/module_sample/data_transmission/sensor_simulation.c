@@ -19,6 +19,7 @@
 #include "dji_fc_subscription.h"
 #include "widget_interaction_test/test_widget_interaction.h"
 #include "dji_widget_manager.h"
+#include "dji_widget.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -277,6 +278,17 @@ static void *SensorSim_Task(void *arg)
             T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
             if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
                 USER_LOG_WARN("sensor sim: set alias failed: 0x%08X", aliasStat);
+            }
+
+            /* --- HACK DEL LATIDO (HEARTBEAT) --- */
+            /* Force an update on Widget Index 6 (Int Input Box) to trigger Pilot 2 to publish the state to MQTT */
+            static int32_t heartbeat_counter = 0;
+            heartbeat_counter++;
+            if (heartbeat_counter > 9999) heartbeat_counter = 0;
+            
+            T_DjiReturnCode widgetStat = DjiWidget_SetWidgetValue(6, heartbeat_counter);
+            if (widgetStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: heartbeat widget failed: 0x%08X", widgetStat);
             }
         }
 
