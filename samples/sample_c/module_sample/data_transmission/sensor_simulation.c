@@ -267,27 +267,15 @@ static void *SensorSim_Task(void *arg)
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);
             DjiTest_WidgetLogAppend("RDO: T=%.1f°C O2=%.1fmg/L Sat=%.1f%%", temperature, oxygen, saturation);
 
-            /* Update Widgets for Cloud API - Try multiple positions for M400 compatibility */
-            T_DjiWidgetStates widgetState = {0};
-            widgetState.widgetType = DJI_WIDGET_TYPE_INT_INPUT_BOX;
-            E_DjiMountPosition testPositions[] = {
-                s_aircraftInfoBaseInfo.mountPosition,
-                DJI_MOUNT_POSITION_PAYLOAD_PORT_NO1,
-                DJI_MOUNT_POSITION_EXTENSION_PORT
-            };
-
-            for (int i = 0; i < 3; i++) {
-                // Temperature (Index 0)
-                widgetState.widgetIndex = 0;
-                widgetState.widgetValue = (int32_t)(temperature * 10.0f);
-                DjiWidgetManager_SetWidgetState(testPositions[i], widgetState);
-
-                // Oxygen (Index 1)
-                widgetState.widgetIndex = 1;
-                widgetState.widgetValue = (int32_t)(oxygen * 100.0f);
-                DjiWidgetManager_SetWidgetState(testPositions[i], widgetState);
-                
-                osalHandler->TaskSleepMs(100); // Small delay to avoid timeout
+            /* Update Cloud API Telemetry via Alias Injection */
+            /* Since M400 strictly rejects custom widgets without UI config (0xE3), 
+               we piggyback on the Alias field (Index 2) which is always synced to the cloud */
+            char telemetryAlias[32];
+            snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f", temperature, oxygen);
+            
+            T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
+            if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: set alias failed: 0x%08X", aliasStat);
             }
         }
 
