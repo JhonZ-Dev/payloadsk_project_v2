@@ -280,6 +280,11 @@ static void *SensorSim_Task(void *arg)
             widgetState.widgetIndex = 1;
             widgetState.widgetValue = (int32_t)(oxygen * 100.0f);
             DjiWidgetManager_SetWidgetState(s_aircraftInfoBaseInfo.mountPosition, widgetState);
+            
+            // Fallback for some M400 configurations if previous calls failed
+            if (s_aircraftInfoBaseInfo.mountPosition != DJI_MOUNT_POSITION_EXTENSION_PORT) {
+                DjiWidgetManager_SetWidgetState(DJI_MOUNT_POSITION_EXTENSION_PORT, widgetState);
+            }
         }
 
         /* Also send to extension/payload ports depending on mount */
