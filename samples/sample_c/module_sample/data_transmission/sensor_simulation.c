@@ -17,7 +17,7 @@
 #include "dji_aircraft_info.h"
 #include "dji_fc_subscription.h"
 #include "widget_interaction_test/test_widget_interaction.h"
-#include "dji_widget.h"
+#include "dji_widget_manager.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -268,7 +268,7 @@ static void *SensorSim_Task(void *arg)
             DjiTest_WidgetLogAppend("RDO: T=%.1f°C O2=%.1fmg/L Sat=%.1f%%", temperature, oxygen, saturation);
 
             /* Update Widgets for Cloud API */
-            T_DjiWidgetState widgetState = {0};
+            T_DjiWidgetStates widgetState = {0};
             widgetState.widgetType = DJI_WIDGET_TYPE_INT_INPUT_BOX;
             
             // Temperature (Index 0)
