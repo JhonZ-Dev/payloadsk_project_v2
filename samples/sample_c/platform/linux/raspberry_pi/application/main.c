@@ -40,6 +40,7 @@
 #include <payload_collaboration/test_payload_collaboration.h>
 #include <xport/test_payload_xport.h>
 #include <hms/test_hms.h>
+#include "data_transmission/sensor_simulation.h"
 #include "monitor/sys_monitor.h"
 #include "osal/osal.h"
 #include "osal/osal_fs.h"
