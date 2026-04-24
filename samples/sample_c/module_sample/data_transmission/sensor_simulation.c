@@ -17,6 +17,8 @@
 #include "dji_aircraft_info.h"
 #include "dji_fc_subscription.h"
 #include "widget_interaction_test/test_widget_interaction.h"
+#include "dji_widget.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -264,6 +266,20 @@ static void *SensorSim_Task(void *arg)
         } else {
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);
             DjiTest_WidgetLogAppend("RDO: T=%.1f°C O2=%.1fmg/L Sat=%.1f%%", temperature, oxygen, saturation);
+
+            /* Update Widgets for Cloud API */
+            T_DjiWidgetState widgetState = {0};
+            widgetState.widgetType = DJI_WIDGET_TYPE_INT_INPUT_BOX;
+            
+            // Temperature (Index 0)
+            widgetState.widgetIndex = 0;
+            widgetState.widgetValue = (int32_t)(temperature * 10.0f);
+            DjiWidgetManager_SetWidgetState(s_aircraftInfoBaseInfo.mountPosition, widgetState);
+
+            // Oxygen (Index 1)
+            widgetState.widgetIndex = 1;
+            widgetState.widgetValue = (int32_t)(oxygen * 100.0f);
+            DjiWidgetManager_SetWidgetState(s_aircraftInfoBaseInfo.mountPosition, widgetState);
         }
 
         /* Also send to extension/payload ports depending on mount */
