@@ -65,7 +65,7 @@ extern "C" {
 
 #define CONFIG_MODULE_SAMPLE_FC_SUBSCRIPTION_ON             false
 
-#define CONFIG_MODULE_SAMPLE_GIMBAL_EMU_ON                  false
+#define CONFIG_MODULE_SAMPLE_GIMBAL_EMU_ON                  true
 
 #define CONFIG_MODULE_SAMPLE_XPORT_ON                       false
 

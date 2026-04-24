@@ -27,6 +27,11 @@
 /* Variable global para el Heartbeat */
 int32_t g_heartbeat_counter = 0;
 
+/* Variables globales para inyección OSD (Gimbal Spoofing) */
+float g_sensor_temperature = 0.0f;
+float g_sensor_oxygen = 0.0f;
+float g_sensor_saturation = 0.0f;
+
 /* Private constants ---------------------------------------------------------*/
 #define SENSOR_SIM_TASK_FREQ_MS        (5000)
 #define SENSOR_SIM_TASK_STACK_SIZE     (2048)
@@ -275,9 +280,18 @@ static void *SensorSim_Task(void *arg)
             /* Update Cloud API Telemetry via Alias Injection */
             /* Since M400 strictly rejects custom widgets without UI config (0xE3), 
                we piggyback on the Alias field (Index 2) which is always synced to the cloud */
+            /* Mock saturation since it's not provided by current Modbus logic */
+            float saturation_val = 98.5f;
+
+            /* Actualizar variables globales para OSD Gimbal Spoofing */
+            g_sensor_temperature = temperature;
+            g_sensor_oxygen = oxygen;
+            g_sensor_saturation = saturation_val;
+
             static uint8_t alias_tick = 0;
             char telemetryAlias[32];
             snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f %d", temperature, oxygen, alias_tick);
+            USER_LOG_INFO("Read Modbus (RDO) -> Temp: %.2f C, Oxygen: %.2f mg/L", temperature, oxygen);
             alias_tick = (alias_tick + 1) % 10; // Cambia de 0 a 9 constantemente
             
             T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);

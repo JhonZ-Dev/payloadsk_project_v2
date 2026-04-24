@@ -597,6 +597,10 @@ static T_DjiReturnCode GetSystemState(T_DjiGimbalSystemState *systemState)
     return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
 }
 
+extern float g_sensor_temperature;
+extern float g_sensor_oxygen;
+extern float g_sensor_saturation;
+
 static T_DjiReturnCode GetAttitudeInformation(T_DjiGimbalAttitudeInformation *attitudeInformation)
 {
     T_DjiOsalHandler *osalHandler = DjiPlatform_GetOsalHandler();
@@ -605,6 +609,14 @@ static T_DjiReturnCode GetAttitudeInformation(T_DjiGimbalAttitudeInformation *at
         USER_LOG_ERROR("mutex lock error");
         return DJI_ERROR_SYSTEM_MODULE_CODE_UNKNOWN;
     }
+
+    /* --- GIMBAL SPOOFING (CABALLO DE TROYA OSD) --- */
+    /* Engañamos a Pilot 2 reportando que nuestro "ángulo" de inclinación (pitch) 
+       es la Temperatura, y la rotación (yaw) es el Oxígeno.
+       La unidad de DJI es 0.1 grados, así que multiplicamos por 10. (ej. 32.5 C -> 325) */
+    s_attitudeInformation.attitude.pitch = (int32_t)(g_sensor_temperature * 10.0f);
+    s_attitudeInformation.attitude.yaw   = (int32_t)(g_sensor_oxygen * 10.0f);
+    s_attitudeInformation.attitude.roll  = (int32_t)(g_sensor_saturation * 10.0f);
 
     *attitudeInformation = s_attitudeInformation;
 
