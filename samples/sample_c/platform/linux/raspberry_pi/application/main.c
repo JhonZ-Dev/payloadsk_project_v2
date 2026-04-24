@@ -55,6 +55,7 @@
 #include "widget_interaction_test/test_widget_interaction.h"
 #include "widget/test_widget_speaker.h"
 #include "widget/test_widget.h"
+#include "dji_widget_manager.h"
 #include "data_transmission/test_data_transmission.h"
 #include "tethered_battery/test_tethered_battery.h"
 #include "dji_sdk_config.h"
@@ -178,6 +179,12 @@ int main(int argc, char **argv)
     if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
         USER_LOG_ERROR("set alias error");
         return DJI_ERROR_SYSTEM_MODULE_CODE_SYSTEM_ERROR;
+    }
+
+    /*!< Initialize the widget manager to allow custom sensors */
+    returnCode = DjiWidgetManager_Init();
+    if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+        USER_LOG_ERROR("widget manager init error");
     }
 
     returnCode = DjiAircraftInfo_GetBaseInfo(&aircraftInfoBaseInfo);
