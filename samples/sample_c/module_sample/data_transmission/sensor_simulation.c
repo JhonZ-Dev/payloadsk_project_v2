@@ -275,8 +275,10 @@ static void *SensorSim_Task(void *arg)
             /* Update Cloud API Telemetry via Alias Injection */
             /* Since M400 strictly rejects custom widgets without UI config (0xE3), 
                we piggyback on the Alias field (Index 2) which is always synced to the cloud */
+            static uint8_t alias_tick = 0;
             char telemetryAlias[32];
-            snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f", temperature, oxygen);
+            snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f %d", temperature, oxygen, alias_tick);
+            alias_tick = (alias_tick + 1) % 10; // Cambia de 0 a 9 constantemente
             
             T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
             if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
