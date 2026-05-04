@@ -241,6 +241,13 @@ int main(int argc, char **argv)
         }
     #endif
 
+    #if CONFIG_MODULE_SAMPLE_CLOUD_API_ON
+        // NOTE: DjiCloudApi_SendDataByWebSocket() requires SDK core to be fully initialized.
+        // Since DjiCore_ApplicationStart() is called AFTER all module init, we cannot use this API here.
+        // Instead, we rely on Widget-based data transmission which works via the cloud bridge.
+        USER_LOG_INFO("cloud api by web socket: skipped (use widget-based transmission instead)");
+    #endif
+
     #if CONFIG_MODULE_SAMPLE_WIDGET_SPEAKER_ON
         returnCode = DjiTest_WidgetSpeakerStartService();
         if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {

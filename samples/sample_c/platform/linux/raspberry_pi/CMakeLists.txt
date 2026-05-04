@@ -82,10 +82,7 @@ else ()
     message(STATUS "Cannot Find LIBUSB")
 endif (LIBUSB_FOUND)
 
-target_link_libraries(${PROJECT_NAME} m dl)
-
-## MQTT library (libmosquitto) for direct MQTT broker communication
-target_link_libraries(${PROJECT_NAME} mosquitto dl)
+target_link_libraries(${PROJECT_NAME} m dl mosquitto)
 
 add_custom_command(TARGET ${PROJECT_NAME}
         PRE_LINK COMMAND cmake ..

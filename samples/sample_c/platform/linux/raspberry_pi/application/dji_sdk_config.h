@@ -54,6 +54,8 @@ extern "C" {
 
 #define CONFIG_MODULE_SAMPLE_SENSOR_SIM_ON                  true
 
+#define CONFIG_MODULE_SAMPLE_CLOUD_API_ON                   true
+
 
 #define CONFIG_MODULE_SAMPLE_WIDGET_SPEAKER_ON              false
 
