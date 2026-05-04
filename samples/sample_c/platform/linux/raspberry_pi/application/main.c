@@ -227,17 +227,17 @@ int main(int argc, char **argv)
         }
     #endif
 
-    #if CONFIG_MODULE_SAMPLE_SENSOR_SIM_ON
-        returnCode = DjiTest_SensorSimStartService();
-        if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-            USER_LOG_ERROR("sensor sim init error");
-        }
-    #endif
-
     #if CONFIG_MODULE_SAMPLE_WIDGET_ON
         returnCode = DjiTest_WidgetInteractionStartService();
         if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_ERROR("widget sample init error");
+        }
+    #endif
+
+    #if CONFIG_MODULE_SAMPLE_SENSOR_SIM_ON
+        returnCode = DjiTest_SensorSimStartService();
+        if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+            USER_LOG_ERROR("sensor sim init error");
         }
     #endif
 

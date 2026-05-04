@@ -9,12 +9,14 @@
 
 #include "sensor_simulation.h"
 #include "rdo_modbus.h"
+#include "rdo_mqtt_client.h"
 #include "dji_core.h"
 #include "dji_logger.h"
 #include "dji_platform.h"
 #include "utils/util_misc.h"
 #include "dji_low_speed_data_channel.h"
 #include "dji_high_speed_data_channel.h"
+#include "dji_cloud_api_by_websockt.h"
 #include "dji_aircraft_info.h"
 #include "dji_fc_subscription.h"
 #include "widget_interaction_test/test_widget_interaction.h"
@@ -44,6 +46,8 @@ float g_sensor_saturation = 0.0f;
 static T_DjiTaskHandle s_sensorSimThread = 0;
 static bool s_gpsTopicSubscribed = false;
 static bool s_modbusInitialized = false;
+static bool s_cloudApiEnabled = false;
+static bool s_mqttEnabled = false;  /* MQTT direct to Mosquitto broker */
 static T_DjiAircraftInfoBaseInfo s_aircraftInfoBaseInfo;
 
 /* Private functions ---------------------------------------------------------*/
@@ -86,6 +90,43 @@ T_DjiReturnCode DjiTest_SensorSimStartService(void)
     if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
         USER_LOG_ERROR("sensor sim: low speed data channel init error: 0x%08X", returnCode);
         return returnCode;
+    }
+
+    /* Enable Cloud API for sending sensor data to DJI Cloud via RC */
+    s_cloudApiEnabled = true;
+    USER_LOG_INFO("sensor sim: Cloud API enabled - sensor data will be sent to DJI Cloud");
+
+    /* Enable MQTT for direct sensor data transmission to Mosquitto broker */
+    s_mqttEnabled = true;
+    
+    /* Configure MQTT client - connect to local Mosquitto broker */
+    T_RdoMqttConfig mqttConfig;
+    memset(&mqttConfig, 0, sizeof(mqttConfig));
+    strncpy(mqttConfig.broker_host, "localhost", sizeof(mqttConfig.broker_host) - 1);  /* Change to broker IP */
+    mqttConfig.broker_port = 1883;                                                         /* Default Mosquitto port */
+    strncpy(mqttConfig.client_id, "rdo_sensor_pi", sizeof(mqttConfig.client_id) - 1);
+    strncpy(mqttConfig.username, "", sizeof(mqttConfig.username) - 1);                   /* Empty for anonymous */
+    strncpy(mqttConfig.password, "", sizeof(mqttConfig.password) - 1);                   /* Empty for anonymous */
+    strncpy(mqttConfig.topic, "rdo/sensor/data", sizeof(mqttConfig.topic) - 1);
+    mqttConfig.qos = 1;
+    mqttConfig.retain_message = false;
+    mqttConfig.keep_alive_interval = 60;
+    
+    T_DjiReturnCode mqttInitResult = RdoMqtt_Init(&mqttConfig);
+    if (mqttInitResult == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+        USER_LOG_INFO("sensor sim: MQTT client initialized successfully");
+        
+        /* Start MQTT background task */
+        T_DjiReturnCode mqttStartResult = RdoMqtt_Start();
+        if (mqttStartResult == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+            USER_LOG_INFO("sensor sim: MQTT client started - will send data to broker");
+        } else {
+            USER_LOG_WARN("sensor sim: MQTT client start failed: 0x%08X", mqttStartResult);
+            s_mqttEnabled = false;
+        }
+    } else {
+        USER_LOG_WARN("sensor sim: MQTT init failed: 0x%08X, continuing without MQTT", mqttInitResult);
+        s_mqttEnabled = false;
     }
 
     /* Get aircraft info for M400-specific channel setup */
@@ -174,6 +215,13 @@ T_DjiReturnCode DjiTest_SensorSimStopService(void)
     if (s_gpsTopicSubscribed) {
         DjiFcSubscription_UnSubscribeTopic(DJI_FC_SUBSCRIPTION_TOPIC_GPS_POSITION);
         s_gpsTopicSubscribed = false;
+    }
+
+    /* Stop MQTT client if enabled */
+    if (s_mqttEnabled) {
+        RdoMqtt_Stop();
+        s_mqttEnabled = false;
+        USER_LOG_INFO("sensor sim: MQTT client stopped");
     }
 
     if (s_modbusInitialized) {
@@ -273,7 +321,37 @@ static void *SensorSim_Task(void *arg)
         djiStat = DjiLowSpeedDataChannel_SendData(channelAddress, (const uint8_t *)payload, (uint16_t)len);
         if (djiStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_ERROR("sensor sim: send data to mobile error.");
-        } else {
+        }
+
+        /* Send to DJI Cloud via WebSocket (data travels through RC to cloud) */
+        if (s_cloudApiEnabled) {
+            uint32_t realLen = 0;
+            T_DjiReturnCode cloudStat = DjiCloudApi_SendDataByWebSocket(
+                (uint8_t *)payload,
+                (uint32_t)len,
+                &realLen
+            );
+            if (cloudStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_DEBUG("sensor sim: sent to DJI Cloud API, len=%d", realLen);
+            } else {
+                USER_LOG_WARN("sensor sim: cloud API send failed: 0x%08X", cloudStat);
+            }
+        }
+
+        /* Send to MQTT broker (Mosquitto) for external server consumption */
+        if (s_mqttEnabled) {
+            T_DjiReturnCode mqttStat = RdoMqtt_SendSensorData(
+                temperature, oxygen, saturation, partial_pressure,
+                latitudeDeg, longitudeDeg, altitudeM, gpsValid
+            );
+            if (mqttStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_DEBUG("sensor sim: sent to MQTT broker, topic: rdo/sensor/data");
+            } else {
+                USER_LOG_DEBUG("sensor sim: MQTT send pending (not connected yet): 0x%08X", mqttStat);
+            }
+        }
+
+        if (djiStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);
             DjiTest_WidgetLogAppend("RDO: T=%.1f°C O2=%.1fmg/L Sat=%.1f%%", temperature, oxygen, saturation);
 
@@ -293,10 +371,24 @@ static void *SensorSim_Task(void *arg)
             snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f %d", temperature, oxygen, alias_tick);
             USER_LOG_INFO("Read Modbus (RDO) -> Temp: %.2f C, Oxygen: %.2f mg/L", temperature, oxygen);
             alias_tick = (alias_tick + 1) % 10; // Cambia de 0 a 9 constantemente
-            
-            T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
-            if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                USER_LOG_WARN("sensor sim: set alias failed: 0x%08X", aliasStat);
+
+            /* Mostrar el dato en la ventana flotante del widget en la app móvil */
+            T_DjiDataChannelState fwState = {0};
+            T_DjiReturnCode stateStat = DjiWidgetFloatingWindow_GetChannelState(&fwState);
+            if (stateStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: get floating window channel state failed: 0x%08X", stateStat);
+            } else {
+                USER_LOG_INFO("sensor sim: floating window channel state: busy=%d bwLimit=%d bwBefore=%d bwAfter=%d",
+                              fwState.busyState, fwState.realtimeBandwidthLimit,
+                              fwState.realtimeBandwidthBeforeFlowController,
+                              fwState.realtimeBandwidthAfterFlowController);
+            }
+
+            T_DjiReturnCode widgetStat = DjiWidgetFloatingWindow_ShowMessage(telemetryAlias);
+            if (widgetStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: show widget message failed: 0x%08X", widgetStat);
+            } else {
+                USER_LOG_INFO("sensor sim: widget message shown: %s", telemetryAlias);
             }
 
             /* --- HACK DEL LATIDO (HEARTBEAT) --- */

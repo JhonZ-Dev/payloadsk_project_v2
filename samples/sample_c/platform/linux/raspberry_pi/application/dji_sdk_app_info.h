@@ -35,10 +35,10 @@ extern "C" {
 /* Exported constants --------------------------------------------------------*/
 // ATTENTION: User must goto https://developer.dji.com/user/apps/#all to create your own dji sdk application, get dji sdk application
 // information then fill in the application information here.
-#define USER_APP_NAME               "Geo"
-#define USER_APP_ID                 "177409"
-#define USER_APP_KEY                "d097535f8aac4dd629e1f3b4e909856"
-#define USER_APP_LICENSE            "RaFEIHww1lNo04SfiTE7QzLzTatyILoe+QglJsGvf1lTcXPPFm/MLZ3Asrqh0FaXq1tkNnsU9iupP/pfd8kH9GAbmeFWK/Q3JMlhxJtNsWJ4p0u+vOMYr2bQ57Rw7ti3gbzKWmxYSywC4qC68DYGVpxQWcWYCQOcE6neUPxv34iTxM+HWQpqTSGPfhDZRAXTZBHABek9gkLtDaw8cMoDbOb0bBr7JxPAzRLv75QPGPrQPDnicbOAE1KPEtJI9W2lfAV69gbRYJG+1uoE/hWKrFGWo5y+bc7xkgecgj8djsBfUr3p5x+FQxaU4ZGOtrJH9U52n328Qd73KRG9COvPsQ=="
+#define USER_APP_NAME               "SENSORSDK"
+#define USER_APP_ID                 "180739"
+#define USER_APP_KEY                "2fc73e256257088cc5e919c7fc4b6b1"
+#define USER_APP_LICENSE            "gEPtYq/kBo3ZtCgyB335+NWMpOVWHzquo+30BYyUT3ituFQ16Osd+hFWSU6ySboXsc5wrHq+IL1nl1CQQ4DRVWUfH58X81e0b82arTCeT9lyj7YZDOhtrQsWUTGuqw7e4apqKBAuzVWOeGjCPz0aoVDjrowsdQvSAeQo5YW3EkmUsUek+gCne7kSlPzl8h4tLUg9th3j2+HhJyrSlBfEBPW/C389c3INoXV0PfOZG/e0zNNMeicwp+ZverNdcata0Z0p9Ohls38Yb+72ng7RYnagZz2fPQKls4UuOkVKSRka1xJKOzJDz5xcF7T8iT/hQ2JlzCuCAgOYahdWZLEPKw=="
 #define USER_DEVELOPER_ACCOUNT      "proyectosidipsp@gmail.com"
 #define USER_BAUD_RATE              "460800"
 
