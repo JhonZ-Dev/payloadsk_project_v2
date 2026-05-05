@@ -275,11 +275,11 @@ static void *SensorSim_Task(void *arg)
                        (unsigned long long)(usedTsMs / 1ULL));
         if (len >= (int)sizeof(payload)) len = (int)sizeof(payload) - 1;
 
-        /* Send to mobile/RC via Low Speed Data Channel.
-         * The RC will forward this data to the MQTT broker over internet.
-         * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> MQTT Broker
+        /* Send to Cloud API via Low Speed Data Channel.
+         * The drone/RC will bridge this directly to the Java backend.
+         * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> Java Backend (Cloud API)
          */
-        channelAddress = DJI_CHANNEL_ADDRESS_MASTER_RC_APP;
+        channelAddress = DJI_CHANNEL_ADDRESS_CLOUD_API;
         djiStat = DjiLowSpeedDataChannel_SendData(channelAddress, (const uint8_t *)payload, (uint16_t)len);
         if (djiStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_ERROR("sensor sim: send data to mobile error.");
