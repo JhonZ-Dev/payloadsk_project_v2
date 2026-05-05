@@ -44,7 +44,6 @@ float g_sensor_saturation = 0.0f;
 static T_DjiTaskHandle s_sensorSimThread = 0;
 static bool s_gpsTopicSubscribed = false;
 static bool s_modbusInitialized = false;
-static bool s_cloudApiEnabled = false;
 static T_DjiAircraftInfoBaseInfo s_aircraftInfoBaseInfo;
 
 /* Private functions ---------------------------------------------------------*/
@@ -89,10 +88,9 @@ T_DjiReturnCode DjiTest_SensorSimStartService(void)
         return returnCode;
     }
 
-    /* NOTE: MQTT communication is handled by the RC, not the Pi.
-     * The Pi sends sensor data to the RC via Low Speed Data Channel.
-     * The RC (which has internet) forwards data to the MQTT broker.
-     * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> MQTT Broker
+    /* NOTE: All data is sent directly to the RC via Low Speed Data Channel.
+     * NO CLOUD CONNECTION - Data is only sent to the remote controller.
+     * Architecture: Pi ──[E-Port/MSDK]──> RC (Data stays local)
      */
 
     /* Get aircraft info for M400-specific channel setup */
@@ -206,6 +204,11 @@ static void *SensorSim_Task(void *arg)
 
     USER_LOG_INFO("SensorSim_Task: RDO Modbus reader active (period=%dms)", SENSOR_SIM_TASK_FREQ_MS);
 
+    /* Wait for SDK core to be fully initialized (DjiCore_ApplicationStart must be called first).
+     * We wait 10 seconds to ensure the SDK is fully initialized. */
+    USER_LOG_INFO("sensor sim: waiting 10 seconds for SDK initialization...");
+    osalHandler->TaskSleepMs(10 * 1000);
+
     while (1) {
         osalHandler->TaskSleepMs(SENSOR_SIM_TASK_FREQ_MS);
 
@@ -275,23 +278,18 @@ static void *SensorSim_Task(void *arg)
                        (unsigned long long)(usedTsMs / 1ULL));
         if (len >= (int)sizeof(payload)) len = (int)sizeof(payload) - 1;
 
-        /* Send to mobile/RC via Low Speed Data Channel.
-         * The RC will forward this data to the MQTT broker over internet.
-         * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> MQTT Broker
+        /* Send sensor data to RC via Low Speed Data Channel.
+         * Architecture: Pi ──[E-Port/MSDK]──> RC (NO CLOUD - Direct RC only)
          */
         channelAddress = DJI_CHANNEL_ADDRESS_MASTER_RC_APP;
         djiStat = DjiLowSpeedDataChannel_SendData(channelAddress, (const uint8_t *)payload, (uint16_t)len);
         if (djiStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-            USER_LOG_ERROR("sensor sim: send data to mobile error.");
+            USER_LOG_ERROR("sensor sim: send data to RC via low-speed channel error: 0x%08X", djiStat);
         }
 
         if (djiStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);
-            DjiTest_WidgetLogAppend("RDO: T=%.1f°C O2=%.1fmg/L Sat=%.1f%%", temperature, oxygen, saturation);
-
-            /* Update Cloud API Telemetry via Alias Injection */
-            /* Since M400 strictly rejects custom widgets without UI config (0xE3), 
-               we piggyback on the Alias field (Index 2) which is always synced to the cloud */
+            /* Update widget display with ALL sensor data */
             /* Mock saturation since it's not provided by current Modbus logic */
             float saturation_val = 98.5f;
 
@@ -300,11 +298,15 @@ static void *SensorSim_Task(void *arg)
             g_sensor_oxygen = oxygen;
             g_sensor_saturation = saturation_val;
 
-            static uint8_t alias_tick = 0;
-            char telemetryAlias[32];
-            snprintf(telemetryAlias, sizeof(telemetryAlias), "T:%.1f O2:%.1f %d", temperature, oxygen, alias_tick);
-            USER_LOG_INFO("Read Modbus (RDO) -> Temp: %.2f C, Oxygen: %.2f mg/L", temperature, oxygen);
-            alias_tick = (alias_tick + 1) % 10; // Cambia de 0 a 9 constantemente
+            /* Build complete telemetry string with ALL JSON fields for WIDGET FLOATING WINDOW:
+             * {"t":temp,"o":oxygen,"s":saturation,"p":partial_pressure,"la":lat,"lo":lon,"a":alt,"g":gps_valid,"ts":timestamp} */
+            char telemetryAlias[200];
+            snprintf(telemetryAlias, sizeof(telemetryAlias),
+                     "T:%.1f O2:%.1f Sat:%.1f P:%.1f\nLa:%.4f Lo:%.4f A:%.1f",
+                     temperature, oxygen, saturation_val, partial_pressure,
+                     latitudeDeg, longitudeDeg, altitudeM);
+            USER_LOG_INFO("Read Modbus (RDO) -> T:%.2f C, O2:%.2f mg/L, Sat:%.1f%%, P:%.2f torr, Lat:%.6f, Lon:%.6f, Alt:%.1f",
+                          temperature, oxygen, saturation_val, partial_pressure, latitudeDeg, longitudeDeg, altitudeM);
 
             /* Mostrar el dato en la ventana flotante del widget en la app móvil */
             T_DjiDataChannelState fwState = {0};

@@ -54,7 +54,7 @@ extern "C" {
 
 #define CONFIG_MODULE_SAMPLE_SENSOR_SIM_ON                  true
 
-#define CONFIG_MODULE_SAMPLE_CLOUD_API_ON                   true
+#define CONFIG_MODULE_SAMPLE_CLOUD_API_ON                   1
 
 
 #define CONFIG_MODULE_SAMPLE_WIDGET_SPEAKER_ON              false
@@ -77,7 +77,7 @@ extern "C" {
 
 /*!< Attention: This function needs to be used together with mobile sdk mop sample.
 * */
-#define CONFIG_MODULE_SAMPLE_MOP_CHANNEL_ON false
+#define CONFIG_MODULE_SAMPLE_MOP_CHANNEL_ON 1
 
 #define CONFIG_MODULE_SAMPLE_TETHERED_BATTERY_ON            false
 
