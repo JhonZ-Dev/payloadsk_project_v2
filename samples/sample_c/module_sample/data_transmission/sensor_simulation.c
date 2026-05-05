@@ -20,7 +20,6 @@
 #include "widget_interaction_test/test_widget_interaction.h"
 #include "dji_widget_manager.h"
 #include "dji_widget.h"
-#include "lan_mqtt_client.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -90,14 +89,11 @@ T_DjiReturnCode DjiTest_SensorSimStartService(void)
         return returnCode;
     }
 
-    /* Initialize LAN MQTT client for direct MQTT communication to broker */
-    /* Architecture: Raspberry Pi (no internet) ──[LAN]──> Mosquitto Broker (172.16.10.136:1883) */
-    returnCode = LAN_MQTTClient_Init("172.16.10.136", 1883, "PSDK_SENSOR_PI", "thing/product/1581F8DBW25AD00A3222/data/upload");
-    if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-        USER_LOG_WARN("sensor sim: LAN MQTT init failed: 0x%08X, continuing without MQTT", returnCode);
-    } else {
-        USER_LOG_INFO("sensor sim: LAN MQTT client initialized - sending to 172.16.10.136:1883");
-    }
+    /* NOTE: MQTT communication is handled by the RC, not the Pi.
+     * The Pi sends sensor data to the RC via Low Speed Data Channel.
+     * The RC (which has internet) forwards data to the MQTT broker.
+     * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> MQTT Broker
+     */
 
     /* Get aircraft info for M400-specific channel setup */
     returnCode = DjiAircraftInfo_GetBaseInfo(&s_aircraftInfoBaseInfo);
@@ -279,15 +275,15 @@ static void *SensorSim_Task(void *arg)
                        (unsigned long long)(usedTsMs / 1ULL));
         if (len >= (int)sizeof(payload)) len = (int)sizeof(payload) - 1;
 
-        /* Send to mobile/RC */
+        /* Send to mobile/RC via Low Speed Data Channel.
+         * The RC will forward this data to the MQTT broker over internet.
+         * Architecture: Pi ──[E-Port/MSDK]──> RC ──[Internet]──> MQTT Broker
+         */
         channelAddress = DJI_CHANNEL_ADDRESS_MASTER_RC_APP;
         djiStat = DjiLowSpeedDataChannel_SendData(channelAddress, (const uint8_t *)payload, (uint16_t)len);
         if (djiStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_ERROR("sensor sim: send data to mobile error.");
         }
-
-        /* Send to LAN MQTT broker (172.16.10.136:1883) - direct LAN communication, no internet needed */
-        LAN_MQTTClient_SendData((const uint8_t *)payload, (uint32_t)len);
 
         if (djiStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);

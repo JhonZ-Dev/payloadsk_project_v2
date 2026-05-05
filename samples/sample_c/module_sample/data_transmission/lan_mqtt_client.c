@@ -31,26 +31,26 @@
 #define MQTT_MAX_CLIENT_ID_LEN      (64)
 #define MQTT_MAX_TOPIC_LEN          (128)
 #define MQTT_MAX_MESSAGE_LEN        (1024)
-#define MQTT_LIB_NAME               "libmosquitto.so.1"
+#define MQTT_LIB_NAME               "libmosquitto.so.2"
 
 /* MQTT function pointers (dynamic loading) ----------------------------------*/
 static void *s_mqttLib = NULL;
 
 /* Function pointer types for libmosquitto functions */
 typedef void *(*t_mosquitto_new)(const char *id, bool clean_session, void *obj);
-typedef void (*t_mosquitto_free)(void *client);
+typedef void (*t_mosquitto_destroy)(void *client);
 typedef int (*t_mosquitto_connect)(void *client, const char *host, int port, int keepalive);
 typedef int (*t_mosquitto_disconnect)(void *client);
 typedef int (*t_mosquitto_publish)(void *client, void *mid, const char *topic, int payloadlen, 
                                     const void *payload, int qos, bool retain);
 typedef int (*t_mosquitto_loop)(void *client, int timeout, int max_packets);
-typedef const *(*t_mosquitto_strerror)(int rc);
+typedef const char *(*t_mosquitto_strerror)(int rc);
 typedef void (*t_mosquitto_lib_init)(void);
 typedef void (*t_mosquitto_lib_cleanup)(void);
 
 /* Global function pointers */
 static t_mosquitto_new fn_mosquitto_new = NULL;
-static t_mosquitto_free fn_mosquitto_free = NULL;
+static t_mosquitto_destroy fn_mosquitto_destroy = NULL;
 static t_mosquitto_connect fn_mosquitto_connect = NULL;
 static t_mosquitto_disconnect fn_mosquitto_disconnect = NULL;
 static t_mosquitto_publish fn_mosquitto_publish = NULL;
@@ -104,7 +104,7 @@ static int MQTTClient_LoadLibrary(void)
         }
 
     LOAD_SYM(mosquitto_new)
-    LOAD_SYM(mosquitto_free)
+    LOAD_SYM(mosquitto_destroy)
     LOAD_SYM(mosquitto_connect)
     LOAD_SYM(mosquitto_disconnect)
     LOAD_SYM(mosquitto_publish)
@@ -128,7 +128,7 @@ static void MQTTClient_UnloadLibrary(void)
         dlclose(s_mqttLib);
         s_mqttLib = NULL;
         fn_mosquitto_new = NULL;
-        fn_mosquitto_free = NULL;
+        fn_mosquitto_destroy = NULL;
         fn_mosquitto_connect = NULL;
         fn_mosquitto_disconnect = NULL;
         fn_mosquitto_publish = NULL;
@@ -163,9 +163,9 @@ static T_DjiReturnCode MQTTClient_Connect(void)
 
     rc = fn_mosquitto_connect(s_mqttClient, s_brokerAddr, (int)s_brokerPort, 60);
     if (rc != 0) {
-        USER_LOG_ERROR("lan_mqtt: connect failed (%d): %s", rc, 
-                       fn_mosquitto_strerror ? fn_mosquitto_strerror(rc) : "unknown");
-        fn_mosquitto_free(s_mqttClient);
+        const char *errStr = (fn_mosquitto_strerror != NULL) ? fn_mosquitto_strerror(rc) : "unknown";
+        USER_LOG_ERROR("lan_mqtt: connect failed (%d): %s", rc, errStr);
+        fn_mosquitto_destroy(s_mqttClient);
         s_mqttClient = NULL;
         return DJI_ERROR_SYSTEM_MODULE_CODE_SYSTEM_ERROR;
     }
@@ -189,8 +189,8 @@ static void MQTTClient_Disconnect(void)
     if (fn_mosquitto_disconnect) {
         fn_mosquitto_disconnect(s_mqttClient);
     }
-    if (fn_mosquitto_free) {
-        fn_mosquitto_free(s_mqttClient);
+    if (fn_mosquitto_destroy) {
+        fn_mosquitto_destroy(s_mqttClient);
     }
     s_mqttClient = NULL;
     s_isConnected = false;
@@ -218,16 +218,29 @@ static void *MQTTClient_Task(void *arg)
     while (1) {
         s_osalHandler->TaskSleepMs(MQTT_CLIENT_TASK_FREQ_MS);
 
+        /* Call mosquitto_loop to maintain connection (keepalive, ping, etc.) */
+        if (s_isConnected && s_mqttClient != NULL && fn_mosquitto_loop) {
+            int rc = fn_mosquitto_loop(s_mqttClient, 100, 1);
+            if (rc != 0) {
+                const char *errStr = (fn_mosquitto_strerror != NULL) ? fn_mosquitto_strerror(rc) : "unknown";
+                USER_LOG_WARN("lan_mqtt: loop failed (%d): %s", rc, errStr);
+                
+                /* Connection lost, disconnect and reconnect */
+                MQTTClient_Disconnect();
+                s_isConnected = false;
+            }
+        }
+
         /* Check if we have data to send */
         if (s_sendLen > 0) {
             if (s_isConnected && s_mqttClient != NULL) {
-                int rc = fn_mosquitto_publish(s_mqttClient, NULL, s_topic, 
+                int rc = fn_mosquitto_publish(s_mqttClient, NULL, s_topic,
                                              (int)s_sendLen, s_sendBuffer, 1, false);
                 if (rc == 0) {
                     USER_LOG_DEBUG("lan_mqtt: published %d bytes to topic '%s'", s_sendLen, s_topic);
                 } else {
-                    USER_LOG_WARN("lan_mqtt: publish failed (%d): %s", rc,
-                                  fn_mosquitto_strerror ? fn_mosquitto_strerror(rc) : "unknown");
+                    const char *errStr = (fn_mosquitto_strerror != NULL) ? fn_mosquitto_strerror(rc) : "unknown";
+                    USER_LOG_WARN("lan_mqtt: publish failed (%d): %s", rc, errStr);
                     
                     /* Try to reconnect if publish failed */
                     MQTTClient_Disconnect();
@@ -302,7 +315,7 @@ T_DjiReturnCode LAN_MQTTClient_Init(const char *brokerAddr, uint16_t brokerPort,
                                            MQTT_CLIENT_TASK_STACK_SIZE, NULL,
                                            &s_mqttTask);
     if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-        USER_LOG_ERROR("lan_mqtt: task create failed");
+        USER_LOG_ERROR("lan_mqtt: task create failed: 0x%08X", returnCode);
         if (fn_mosquitto_lib_cleanup) {
             fn_mosquitto_lib_cleanup();
         }
