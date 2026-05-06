@@ -264,7 +264,9 @@ static T_DjiReturnCode DjiTestWidget_SetWidgetValue(E_DjiWidgetType widgetType, 
     return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
 }
 
-extern int32_t g_heartbeat_counter;
+extern float g_sensor_temperature;
+extern float g_sensor_oxygen;
+extern float g_sensor_saturation;
 
 static T_DjiReturnCode DjiTestWidget_GetWidgetValue(E_DjiWidgetType widgetType, uint32_t index, int32_t *value,
                                                     void *userData)
@@ -272,8 +274,16 @@ static T_DjiReturnCode DjiTestWidget_GetWidgetValue(E_DjiWidgetType widgetType, 
     USER_UTIL_UNUSED(userData);
     USER_UTIL_UNUSED(widgetType);
 
-    if (index == 6) {
-        *value = g_heartbeat_counter;
+    /* --- HACK DE TELEMETRÍA POR WIDGETS --- */
+    if (index == 3) {
+        // Widget Scale -> Temperatura x10
+        *value = (int32_t)(g_sensor_temperature * 10.0f);
+    } else if (index == 5) {
+        // Widget Scale -> Oxígeno x10
+        *value = (int32_t)(g_sensor_oxygen * 10.0f);
+    } else if (index == 6) {
+        // Widget Int Input -> Saturación x10
+        *value = (int32_t)(g_sensor_saturation * 10.0f);
     } else {
         *value = s_widgetValueList[index];
     }

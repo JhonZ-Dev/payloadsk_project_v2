@@ -248,6 +248,13 @@ int main(int argc, char **argv)
         USER_LOG_INFO("cloud api: DISABLED - sending data to RC only, no cloud connection");
     #endif
 
+    #if CONFIG_MODULE_SAMPLE_WIDGET_ON
+        returnCode = DjiTest_WidgetStartService();
+        if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+            USER_LOG_ERROR("widget test init error");
+        }
+    #endif
+
     #if CONFIG_MODULE_SAMPLE_WIDGET_SPEAKER_ON
         returnCode = DjiTest_WidgetSpeakerStartService();
         if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
