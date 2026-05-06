@@ -613,7 +613,7 @@ static T_DjiReturnCode GetAttitudeInformation(T_DjiGimbalAttitudeInformation *at
     /* --- GIMBAL SPOOFING (CABALLO DE TROYA OSD) --- */
     /* Engañamos a Pilot 2 reportando que nuestro "ángulo" de inclinación (pitch) 
        es la Temperatura, y la rotación (yaw) es el Oxígeno.
-       La unidad de DJI es 0.1 grados, así que multiplicamos por 10. (ej. 32.5 C -> 325) */
+       La unidad de DJI es 0.1 grados, así que multiplicamos por 10. (ej. 24.7 C -> 247) */
     s_attitudeInformation.attitude.pitch = (int32_t)(g_sensor_temperature * 10.0f);
     s_attitudeInformation.attitude.yaw   = (int32_t)(g_sensor_oxygen * 10.0f);
     s_attitudeInformation.attitude.roll  = (int32_t)(g_sensor_saturation * 10.0f);
