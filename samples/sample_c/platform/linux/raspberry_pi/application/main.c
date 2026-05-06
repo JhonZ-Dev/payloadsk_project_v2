@@ -181,11 +181,7 @@ int main(int argc, char **argv)
         return DJI_ERROR_SYSTEM_MODULE_CODE_SYSTEM_ERROR;
     }
 
-    /*!< Initialize the widget manager to allow custom sensors */
-    returnCode = DjiWidgetManager_Init();
-    if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-        USER_LOG_ERROR("widget manager init error");
-    }
+    /* Initialize the widget system (DjiWidget_Init is handled inside the StartService below) */
 
     returnCode = DjiAircraftInfo_GetBaseInfo(&aircraftInfoBaseInfo);
     if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
@@ -228,7 +224,7 @@ int main(int argc, char **argv)
     #endif
 
     #if CONFIG_MODULE_SAMPLE_WIDGET_ON
-        returnCode = DjiTest_WidgetInteractionStartService();
+        returnCode = DjiTest_WidgetStartService();
         if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_ERROR("widget sample init error");
         }
@@ -246,13 +242,6 @@ int main(int argc, char **argv)
         // NO CLOUD CONNECTION - Data stays local between Pi and RC only.
         // Architecture: Pi ──[E-Port/MSDK]──> RC (No internet/MQTT/cloud)
         USER_LOG_INFO("cloud api: DISABLED - sending data to RC only, no cloud connection");
-    #endif
-
-    #if CONFIG_MODULE_SAMPLE_WIDGET_ON
-        returnCode = DjiTest_WidgetStartService();
-        if (returnCode != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-            USER_LOG_ERROR("widget test init error");
-        }
     #endif
 
     #if CONFIG_MODULE_SAMPLE_WIDGET_SPEAKER_ON
