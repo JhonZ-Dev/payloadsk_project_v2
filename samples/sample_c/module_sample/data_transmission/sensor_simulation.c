@@ -32,6 +32,9 @@ float g_sensor_temperature = 0.0f;
 float g_sensor_oxygen = 0.0f;
 float g_sensor_saturation = 0.0f;
 
+/* Variables globales para widget SCALE (Cloud API sync) */
+static float g_widget_scale_value = 0.0f;
+
 /* Private constants ---------------------------------------------------------*/
 #define SENSOR_SIM_TASK_FREQ_MS        (5000)
 #define SENSOR_SIM_TASK_STACK_SIZE     (2048)
@@ -87,11 +90,6 @@ T_DjiReturnCode DjiTest_SensorSimStartService(void)
         USER_LOG_ERROR("sensor sim: low speed data channel init error: 0x%08X", returnCode);
         return returnCode;
     }
-
-    /* NOTE: All data is sent directly to the RC via Low Speed Data Channel.
-     * NO CLOUD CONNECTION - Data is only sent to the remote controller.
-     * Architecture: Pi ──[E-Port/MSDK]──> RC (Data stays local)
-     */
 
     /* Get aircraft info for M400-specific channel setup */
     returnCode = DjiAircraftInfo_GetBaseInfo(&s_aircraftInfoBaseInfo);
@@ -195,6 +193,7 @@ T_DjiReturnCode DjiTest_SensorSimStopService(void)
 
     return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
 }
+
 static void *SensorSim_Task(void *arg)
 {
     T_DjiOsalHandler *osalHandler = DjiPlatform_GetOsalHandler();
@@ -289,6 +288,13 @@ static void *SensorSim_Task(void *arg)
 
         if (djiStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
             USER_LOG_DEBUG("sensor sim: sent REAL data: %s", payload);
+
+            /* Update widget SCALE value for Cloud API sync (temperature -> 0-100) */
+            float scaledValue = ((temperature - (-10.0f)) / (50.0f - (-10.0f))) * 100.0f;
+            if (scaledValue < 0.0f) scaledValue = 0.0f;
+            if (scaledValue > 100.0f) scaledValue = 100.0f;
+            g_widget_scale_value = scaledValue;
+
             /* Update widget display with ALL sensor data */
             /* Mock saturation since it's not provided by current Modbus logic */
             float saturation_val = 98.5f;

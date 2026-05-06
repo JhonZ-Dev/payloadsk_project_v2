@@ -617,18 +617,47 @@ static T_DjiReturnCode DjiTestWidget_SetWidgetValue(E_DjiWidgetType widgetType, 
 }
 
 extern int32_t g_heartbeat_counter;
+extern float g_sensor_temperature;
+extern float g_sensor_oxygen;
+extern float g_sensor_saturation;
 
 static T_DjiReturnCode DjiTestWidget_GetWidgetValue(E_DjiWidgetType widgetType, uint32_t index, int32_t *value,
                                                     void *userData)
 {
     USER_UTIL_UNUSED(userData);
-    USER_UTIL_UNUSED(widgetType);
 
+    /* Handle heartbeat counter (index 6) */
     if (index == 6) {
         *value = g_heartbeat_counter;
-    } else {
-        *value = s_widgetValueList[index];
+        return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
     }
+
+    /* Handle SCALE widgets for sensor data display (Cloud API sync) */
+    if (widgetType == DJI_WIDGET_TYPE_SCALE) {
+        float scaledValue = 0.0f;
+
+        if (index == 0) {
+            /* Widget SCALE index 0: Temperature (maps -10 to 50 C -> 0 to 100) */
+            float temp = g_sensor_temperature;
+            scaledValue = ((temp - (-10.0f)) / (50.0f - (-10.0f))) * 100.0f;
+            if (scaledValue < 0.0f) scaledValue = 0.0f;
+            if (scaledValue > 100.0f) scaledValue = 100.0f;
+        } else if (index == 5) {
+            /* Widget SCALE index 5: Oxygen saturation (maps 0 to 100% -> 0 to 100) */
+            float oxygenVal = g_sensor_oxygen;
+            scaledValue = (oxygenVal / 20.0f) * 100.0f;
+            if (scaledValue < 0.0f) scaledValue = 0.0f;
+            if (scaledValue > 100.0f) scaledValue = 100.0f;
+        } else {
+            scaledValue = (float) s_widgetValueList[index];
+        }
+
+        *value = (int32_t) scaledValue;
+        return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
+    }
+
+    /* Default: return stored widget value */
+    *value = s_widgetValueList[index];
 
     return DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS;
 }
