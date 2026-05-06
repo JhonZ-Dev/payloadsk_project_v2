@@ -340,9 +340,7 @@ static void *SensorSim_Task(void *arg)
             T_DjiReturnCode cloudStat = DjiLowSpeedDataChannel_SendData(DJI_CHANNEL_ADDRESS_CLOUD_API, 
                                                                        (const uint8_t *)cloudJson, 
                                                                        strlen(cloudJson));
-            if (cloudStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                USER_LOG_WARN("sensor sim: send to CLOUD_API failed: 0x%08X (Normal if M400 blocks it)", cloudStat);
-            } else {
+            if (cloudStat == DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
                 USER_LOG_INFO("sensor sim: CLOUD_API JSON SENT: %s", cloudJson);
             }
 

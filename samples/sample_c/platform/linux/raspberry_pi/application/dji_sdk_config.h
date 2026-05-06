@@ -61,7 +61,7 @@ extern "C" {
 
 #define CONFIG_MODULE_SAMPLE_UPGRADE_ON                     false
 
-#define CONFIG_MODULE_SAMPLE_CAMERA_EMU_ON                  false
+#define CONFIG_MODULE_SAMPLE_CAMERA_EMU_ON                  true
 
 #define CONFIG_MODULE_SAMPLE_CAMERA_MEDIA_ON                false
 

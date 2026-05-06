@@ -138,6 +138,11 @@ static T_DjiReturnCode GetPhotoTimeIntervalSettings(T_DjiCameraPhotoTimeInterval
 static T_DjiReturnCode GetSDCardState(T_DjiCameraSDCardState *sdCardState);
 static T_DjiReturnCode FormatSDCard(void);
 
+/* Externs from sensor_simulation.c to inject data into camera OSD */
+extern float g_sensor_temperature;
+extern float g_sensor_oxygen;
+extern float g_sensor_saturation;
+
 static T_DjiReturnCode SetMeteringMode(E_DjiCameraMeteringMode mode);
 static T_DjiReturnCode GetMeteringMode(E_DjiCameraMeteringMode *mode);
 static T_DjiReturnCode SetSpotMeteringTarget(T_DjiCameraSpotMeteringTarget target);
@@ -1001,6 +1006,11 @@ static void *UserCamera_Task(void *arg)
 
     while (1) {
         osalHandler->TaskSleepMs(1000 / PAYLOAD_CAMERA_EMU_TASK_FREQ);
+        
+        /* [SENSOR HACK] Inyectamos datos en campos que DJI siempre sincroniza con la nube */
+        s_cameraOpticalZoomFocalLength = (uint32_t)(g_sensor_temperature * 10.0f);
+        s_cameraFocusRingValue = (uint32_t)(g_sensor_oxygen * 10.0f);
+
         step++;
 
         returnCode = osalHandler->MutexLock(s_commonMutex);
