@@ -328,16 +328,26 @@ static void *SensorSim_Task(void *arg)
                               fwState.realtimeBandwidthAfterFlowController);
             }
 
-            /* [ESTRATEGIA CABALLO DE TROYA]
-             * Usamos el Alias del Payload para transportar el dato. 
-             * El Alias se sincroniza automáticamente con la nube en el topic 'status' o 'state'.
+            /* [ESTRATEGIA DOCUMENTACION DJI]
+             * Construimos el JSON exacto que dice la documentación para 'psdk_floating_window_text'.
+             * Al enviarlo por el canal CLOUD_API, el RC debería reenviarlo directo al MQTT.
              */
-            T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
-            if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                USER_LOG_WARN("sensor sim: set alias failed: 0x%08X", aliasStat);
+            char cloudJson[512];
+            snprintf(cloudJson, sizeof(cloudJson),
+                     "{\"method\":\"psdk_floating_window_text\",\"data\":{\"psdk_index\":0,\"value\":\"%s\"}}",
+                     telemetryAlias);
+
+            T_DjiReturnCode cloudStat = DjiLowSpeedDataChannel_SendData(DJI_CHANNEL_ADDRESS_CLOUD_API, 
+                                                                       (const uint8_t *)cloudJson, 
+                                                                       strlen(cloudJson));
+            if (cloudStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: send to CLOUD_API failed: 0x%08X (Normal if M400 blocks it)", cloudStat);
             } else {
-                USER_LOG_INFO("sensor sim: PAYLOAD ALIAS UPDATED (Cloud Sync): %s", telemetryAlias);
+                USER_LOG_INFO("sensor sim: CLOUD_API JSON SENT: %s", cloudJson);
             }
+
+            /* También mantenemos el Alias como respaldo */
+            DjiCore_SetAlias(telemetryAlias);
 
             /* --- HACK DEL LATIDO (HEARTBEAT) --- */
             /* Increment global counter so Pilot 2 sees a change when it polls GetWidgetValue */
