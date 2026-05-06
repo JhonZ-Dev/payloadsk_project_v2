@@ -306,11 +306,13 @@ static void *SensorSim_Task(void *arg)
 
             /* Build complete telemetry string with ALL JSON fields for WIDGET FLOATING WINDOW:
              * {"t":temp,"o":oxygen,"s":saturation,"p":partial_pressure,"la":lat,"lo":lon,"a":alt,"g":gps_valid,"ts":timestamp} */
-            char telemetryAlias[200];
+            static uint8_t alias_counter = 0;
+            char telemetryAlias[32];
             snprintf(telemetryAlias, sizeof(telemetryAlias),
-                     "T:%.1f O2:%.1f Sat:%.1f P:%.1f\nLa:%.4f Lo:%.4f A:%.1f",
-                     temperature, oxygen, saturation_val, partial_pressure,
-                     latitudeDeg, longitudeDeg, altitudeM);
+                     "T:%.1f O:%.1f S:%.0f #%d",
+                     temperature, oxygen, saturation_val, alias_counter);
+            alias_counter = (alias_counter + 1) % 100;
+
             USER_LOG_INFO("Read Modbus (RDO) -> T:%.2f C, O2:%.2f mg/L, Sat:%.1f%%, P:%.2f torr, Lat:%.6f, Lon:%.6f, Alt:%.1f",
                           temperature, oxygen, saturation_val, partial_pressure, latitudeDeg, longitudeDeg, altitudeM);
 
@@ -326,11 +328,15 @@ static void *SensorSim_Task(void *arg)
                               fwState.realtimeBandwidthAfterFlowController);
             }
 
-            T_DjiReturnCode widgetStat = DjiWidgetFloatingWindow_ShowMessage(telemetryAlias);
-            if (widgetStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
-                USER_LOG_WARN("sensor sim: show widget message failed: 0x%08X", widgetStat);
+            /* [ESTRATEGIA CABALLO DE TROYA]
+             * Usamos el Alias del Payload para transportar el dato. 
+             * El Alias se sincroniza automáticamente con la nube en el topic 'status' o 'state'.
+             */
+            T_DjiReturnCode aliasStat = DjiCore_SetAlias(telemetryAlias);
+            if (aliasStat != DJI_ERROR_SYSTEM_MODULE_CODE_SUCCESS) {
+                USER_LOG_WARN("sensor sim: set alias failed: 0x%08X", aliasStat);
             } else {
-                USER_LOG_INFO("sensor sim: widget message shown: %s", telemetryAlias);
+                USER_LOG_INFO("sensor sim: PAYLOAD ALIAS UPDATED (Cloud Sync): %s", telemetryAlias);
             }
 
             /* --- HACK DEL LATIDO (HEARTBEAT) --- */
